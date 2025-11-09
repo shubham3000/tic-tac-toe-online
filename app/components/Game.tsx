@@ -23,6 +23,7 @@ type GameState = {
 
 export default function Game({ gameId }: { gameId: string }) {
   const { user, logout } = useAuth();
+  const [copied, setCopied] = useState(false);
 
   const [gameState, setGameState] = useState<GameState>({
     board: Array(9).fill(null),
@@ -99,6 +100,13 @@ export default function Game({ gameId }: { gameId: string }) {
     return null;
   };
 
+  const copyGameId = async () => {
+    await navigator.clipboard.writeText(gameId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+
   const handleMove = async (index: number) => {
     if (!user) return;
 
@@ -152,7 +160,25 @@ export default function Game({ gameId }: { gameId: string }) {
     return (
       <div className="text-center p-8">
         <h2 className="text-2xl font-bold mb-4">Waiting for Player 2...</h2>
-        <p className="text-gray-600">Share this game ID: {gameId}</p>
+        <div className="text-center">
+          <p className="text-gray-600 mb-2">
+            Share this Game ID:
+            <span className="font-semibold ml-1">{gameId}</span>
+          </p>
+
+          <button
+            onClick={copyGameId}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+          >
+            Copy Game ID
+          </button>
+
+          {copied && (
+            <p className="text-green-500 font-semibold mt-2 transition-opacity">
+              ✅ Copied!
+            </p>
+          )}
+        </div>
       </div>
     );
   }
