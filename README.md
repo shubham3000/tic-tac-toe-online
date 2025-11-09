@@ -2,7 +2,7 @@
 
 A real-time, online multiplayer **Tic-Tac-Toe** game built using:
 
-✅ Next.js 15 (App Router)  
+✅ Next.js 16 (App Router)  
 ✅ Firebase Authentication  
 ✅ Firestore Realtime Sync  
 ✅ React Hooks  
@@ -71,12 +71,11 @@ TIC_TAC_TOE/
 
 | Tool | Usage |
 |------|--------|
-| **Next.js 14** | Core framework |
+| **Next.js 16** | Core framework |
 | **React** | UI components |
 | **Firebase Auth** | User login |
 | **Firestore** | Real-time database |
 | **TailwindCSS** | Styles |
-| **DaisyUI** | UI components |
 | **TypeScript** | Types |
 
 ---
@@ -93,7 +92,7 @@ npm run dev
 
 ---
 
-## 🔧 Update .env file with your firebase config
+## 💲 Update .env file with your firebase config
 
 ```bash
 NEXT_PUBLIC_FIREBASE_API_KEY=
