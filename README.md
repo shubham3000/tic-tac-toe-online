@@ -37,6 +37,7 @@ Two players join the same game using a **Game ID**, and every move updates insta
 
 ## 📁 Project Structure
 
+```
 TIC_TAC_TOE/
 │
 ├── app/
@@ -53,18 +54,16 @@ TIC_TAC_TOE/
 │ ├── firebase.ts # Firebase setup
 │ └── auth.tsx # Auth context + hooks
 │
-├── types/
-│ └── daisyui.d.ts # DaisyUI TS module declaration
-│
 ├── public/
 │ └── favicon.ico
 │
+├── .env.local
 ├── tailwind.config.ts
 ├── postcss.config.mjs
 ├── tsconfig.json
 ├── package.json
 └── README.md
-
+```
 
 ---
 
@@ -86,10 +85,29 @@ TIC_TAC_TOE/
 
 ### 1️⃣ Clone the repo
 ```bash
-git clone https://github.com/your-username/tic_tac_toe.git
-cd tic_tac_toe
+git clone https://github.com/shubham3000/tic-tac-toe-online.git
+cd tic-tac-toe-online
+npm install
+npm run dev
+```
 
-🎮 How to Play
+---
+
+## 🔧 Update .env file with your firebase config
+
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_DATABASEURL=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
+```
+
+---
+## 🎮 How to Play
 
 Login (Firebase).
 
