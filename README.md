@@ -88,3 +88,18 @@ TIC_TAC_TOE/
 ```bash
 git clone https://github.com/your-username/tic_tac_toe.git
 cd tic_tac_toe
+
+🎮 How to Play
+
+Login (Firebase).
+
+Go to Lobby.
+
+Create or join a game using Game ID.
+
+Player X = creator
+Player O = joiner
+
+Play turns in real-time.
+
+When someone wins or it's a draw → Reset Game.
