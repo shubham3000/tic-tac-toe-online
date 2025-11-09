@@ -1,0 +1,90 @@
+# 🎮 Tic-Tac-Toe Multiplayer (Next.js + Firebase + Firestore)
+
+A real-time, online multiplayer **Tic-Tac-Toe** game built using:
+
+✅ Next.js 14 (App Router)  
+✅ Firebase Authentication  
+✅ Firestore Realtime Sync  
+✅ React Hooks  
+✅ TailwindCSS + DaisyUI  
+
+Two players join the same game using a **Game ID**, and every move updates instantly.
+
+---
+
+## 🚀 Features
+
+### 🔥 Real-Time Game Play
+- Firestore `onSnapshot` keeps boards in sync instantly.
+
+### 👥 Multiplayer Support
+- First player becomes **X**.
+- Second player joins as **O**.
+
+### 🧠 Game Logic
+- Winner detection  
+- Draw handling  
+- Prevent invalid moves  
+- Turn switching  
+
+### 🔄 Reset Game
+- After a match ends, a **Reset Game** button appears.
+
+### 🔐 Authentication
+- Firebase Auth uniquely identifies each player.
+
+---
+
+## 📁 Project Structure
+
+TIC_TAC_TOE/
+│
+├── app/
+│ ├── components/
+│ │ ├── Game.tsx # Main game board logic
+│ │ ├── Lobby.tsx # Join/Create game UI
+│ │ └── LoginScreen.tsx # Login page
+│ │
+│ ├── globals.css
+│ ├── layout.tsx
+│ └── page.tsx # Landing/home page
+│
+├── lib/
+│ ├── firebase.ts # Firebase setup
+│ └── auth.tsx # Auth context + hooks
+│
+├── types/
+│ └── daisyui.d.ts # DaisyUI TS module declaration
+│
+├── public/
+│ └── favicon.ico
+│
+├── tailwind.config.ts
+├── postcss.config.mjs
+├── tsconfig.json
+├── package.json
+└── README.md
+
+
+---
+
+## 🛠️ Tech Stack
+
+| Tool | Usage |
+|------|--------|
+| **Next.js 14** | Core framework |
+| **React** | UI components |
+| **Firebase Auth** | User login |
+| **Firestore** | Real-time database |
+| **TailwindCSS** | Styles |
+| **DaisyUI** | UI components |
+| **TypeScript** | Types |
+
+---
+
+## 🔧 Installation
+
+### 1️⃣ Clone the repo
+```bash
+git clone https://github.com/your-username/tic_tac_toe.git
+cd tic_tac_toe
