@@ -2,11 +2,11 @@
 
 A real-time, online multiplayer **Tic-Tac-Toe** game built using:
 
-✅ Next.js 14 (App Router)  
+✅ Next.js 15 (App Router)  
 ✅ Firebase Authentication  
 ✅ Firestore Realtime Sync  
 ✅ React Hooks  
-✅ TailwindCSS + DaisyUI  
+✅ TailwindCSS  
 
 Two players join the same game using a **Game ID**, and every move updates instantly.
 
