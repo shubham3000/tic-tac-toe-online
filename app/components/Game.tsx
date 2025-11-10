@@ -13,6 +13,7 @@ type GameState = {
   currentPlayer: Player;
   winner: Player | "draw" | null;
   players: { X: string | null; O: string | null };
+  playerNames: { X: string | null; O: string | null };
   wins: { X: number; O: number };
   startingPlayer: "X" | "O";
 };
@@ -32,16 +33,23 @@ export default function Game({
     currentPlayer: "X",
     winner: null,
     players: { X: null, O: null },
+    playerNames: { X: null, O: null },
     wins: { X: 0, O: 0 },
     startingPlayer: "X",
   });
 
+  // --------------------------------------------------------------
+  // Load game + realtime updates
+  // --------------------------------------------------------------
   useEffect(() => {
     const gameRef = doc(db, "games", gameId);
 
     const initGame = async () => {
       const gameDoc = await getDoc(gameRef);
 
+      // -----------------------------------------------
+      // CASE 1 — Game does not exist → Create new
+      // -----------------------------------------------
       if (!gameDoc.exists()) {
         await setDoc(gameRef, {
           board: Array(9).fill(null),
@@ -49,20 +57,58 @@ export default function Game({
           startingPlayer: "X",
           winner: null,
           players: { X: user?.uid || null, O: null },
+          playerNames: { X: user?.displayName || "Player X", O: null },
           wins: { X: 0, O: 0 },
         });
-      } else {
-        const data = gameDoc.data();
-        if (!data.players.O && user?.uid !== data.players.X) {
-          await updateDoc(gameRef, {
-            "players.O": user?.uid || null,
-          });
-        }
+        return;
+      }
+
+      // -----------------------------------------------
+      // CASE 2 — Game exists → sync and fix missing names
+      // -----------------------------------------------
+      const data = gameDoc.data();
+
+      const currentX = data.players?.X;
+      const currentO = data.players?.O;
+
+      const nameX = data.playerNames?.X;
+      const nameO = data.playerNames?.O;
+
+      const updates: Record<string, unknown> = {};
+
+      // Assign user to empty slot
+      if (!currentX && user?.uid !== currentO) {
+        updates["players.X"] = user?.uid;
+        updates["playerNames.X"] = user?.displayName || "Player X";
+      }
+
+      if (!currentO && user?.uid !== currentX) {
+        updates["players.O"] = user?.uid;
+        updates["playerNames.O"] = user?.displayName || "Player O";
+      }
+
+      // Fix missing names
+      if (currentX && !nameX) updates["playerNames.X"] = "Player X";
+      if (currentO && !nameO) updates["playerNames.O"] = "Player O";
+
+      // Always keep names synced with Firebase Auth
+      if (user?.uid === currentX) {
+        updates["playerNames.X"] = user?.displayName || "Player X";
+      }
+
+      if (user?.uid === currentO) {
+        updates["playerNames.O"] = user?.displayName || "Player O";
+      }
+
+      // Apply updates if needed
+      if (Object.keys(updates).length > 0) {
+        await updateDoc(gameRef, updates);
       }
     };
 
     initGame();
 
+    // Live realtime updates
     const unsubscribe = onSnapshot(gameRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
@@ -70,6 +116,7 @@ export default function Game({
         setGameState({
           ...data,
           wins: data.wins || { X: 0, O: 0 },
+          playerNames: data.playerNames || { X: null, O: null },
           startingPlayer: data.startingPlayer || "X",
           currentPlayer: data.currentPlayer || data.startingPlayer,
         });
@@ -79,6 +126,9 @@ export default function Game({
     return () => unsubscribe();
   }, [gameId, user]);
 
+  // --------------------------------------------------------------
+  // Check Winner
+  // --------------------------------------------------------------
   const checkWinner = (board: Player[]): Player | "draw" | null => {
     const lines = [
       [0, 1, 2],
@@ -100,12 +150,18 @@ export default function Game({
     return board.every((cell) => cell !== null) ? "draw" : null;
   };
 
+  // --------------------------------------------------------------
+  // Copy Game ID
+  // --------------------------------------------------------------
   const copyGameId = async () => {
     await navigator.clipboard.writeText(gameId);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // --------------------------------------------------------------
+  // Handle Player Move
+  // --------------------------------------------------------------
   const handleMove = async (index: number) => {
     if (!user) return;
 
@@ -130,7 +186,7 @@ export default function Game({
         board: newBoard,
         winner,
         currentPlayer: null,
-        [`wins.${winner}`]: (gameState.wins?.[winner] || 0) + 1,
+        [`wins.${winner}`]: (gameState.wins[winner] || 0) + 1,
       });
       return;
     }
@@ -142,32 +198,71 @@ export default function Game({
     });
   };
 
-  // RESET ROUND (no change to starter)
+  // --------------------------------------------------------------
+  // Reset Round (same starter)
+  // --------------------------------------------------------------
   const resetGame = async () => {
-    const gameRef = doc(db, "games", gameId);
-    await updateDoc(gameRef, {
+    await updateDoc(doc(db, "games", gameId), {
       board: Array(9).fill(null),
       currentPlayer: gameState.startingPlayer,
       winner: null,
     });
   };
 
-  // SWAP STARTER AFTER ROUND END
-  const swapStarter = async (starter: "X" | "O") => {
+  // --------------------------------------------------------------
+  // Swap Starter + Swap Teams + Swap Wins + Swap Names
+  // --------------------------------------------------------------
+  const swapStarter = async (newStarter: "X" | "O") => {
     const gameRef = doc(db, "games", gameId);
 
+    const currentX = gameState.players.X;
+    const currentO = gameState.players.O;
+
+    const nameX = gameState.playerNames.X;
+    const nameO = gameState.playerNames.O;
+
+    const winsX = gameState.wins.X;
+    const winsO = gameState.wins.O;
+
+    let newPlayers = { ...gameState.players };
+    let newNames = { ...gameState.playerNames };
+    let newWins = { ...gameState.wins };
+
+    // If user is switching sides → swap everything
+    const userIsX = user?.uid === currentX;
+    const userIsO = user?.uid === currentO;
+
+    const switchingXtoO = userIsX && newStarter === "O";
+    const switchingOtoX = userIsO && newStarter === "X";
+
+    if (switchingXtoO || switchingOtoX) {
+      newPlayers = { X: currentO, O: currentX };
+      newNames = { X: nameO, O: nameX };
+      newWins = { X: winsO, O: winsX };
+    }
+
     await updateDoc(gameRef, {
-      startingPlayer: starter,
-      currentPlayer: starter,
+      startingPlayer: newStarter,
+      currentPlayer: newStarter,
+      players: newPlayers,
+      playerNames: newNames,
+      wins: newWins,
       board: Array(9).fill(null),
       winner: null,
     });
   };
 
+  // --------------------------------------------------------------
+  // Cell UI
+  // --------------------------------------------------------------
   const getCellStyle = (value: Player) =>
-    `w-20 h-20 bg-white rounded-lg shadow-md flex items-center justify-center text-4xl font-bold cursor-pointer transition-all hover:bg-gray-100
+    `w-20 h-20 bg-white rounded-lg shadow-md flex items-center justify-center text-4xl font-bold cursor-pointer 
+     transition-all hover:bg-gray-100
      ${value === "X" ? "text-blue-500" : "text-pink-500"}`;
 
+  // --------------------------------------------------------------
+  // Waiting screen
+  // --------------------------------------------------------------
   if (!gameState.players.O) {
     return (
       <div className="text-center p-8">
@@ -178,9 +273,8 @@ export default function Game({
           <span className="font-semibold ml-1">{gameId}</span>
         </p>
 
-        <p className="text-gray-600 mt-3">
-          <strong>First Turn:</strong>{" "}
-          {gameState.startingPlayer === "X" ? "Player X" : "Player O"}
+        <p className="text-gray-700 mt-3 font-semibold">
+          First Turn: {gameState.startingPlayer}
         </p>
 
         <button
@@ -197,12 +291,16 @@ export default function Game({
     );
   }
 
+  // --------------------------------------------------------------
+  // Main Game UI
+  // --------------------------------------------------------------
   return (
     <div className="flex flex-col items-center min-h-screen bg-linear-to-br from-purple-600 to-blue-500 p-4">
+      {/* TOP BUTTONS */}
       <div className="flex gap-4 mb-6">
         <button
           onClick={onBack}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
         >
           ⬅ Back
         </button>
@@ -216,16 +314,19 @@ export default function Game({
       </div>
 
       <div className="flex flex-col md:flex-row gap-9">
-        {/* GAME UI */}
-        <div className="bg-white p-8 rounded-xl shadow-2xl">
-          {/* Current Status */}
+        {/* GAME AREA */}
+        <div className="w-full max-w-4xl bg-white p-8 rounded-xl shadow-2xl">
           <div className="mb-6 text-center">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               {gameState.winner
                 ? gameState.winner === "draw"
                   ? "It's a Draw!"
-                  : `Player ${gameState.winner} Wins!`
-                : `Current Player: ${gameState.currentPlayer}`}
+                  : `${gameState.playerNames[gameState.winner]} (${gameState.winner}) Wins!`
+                : `Turn: ${
+                    gameState.currentPlayer === "X"
+                      ? `${gameState.playerNames.X} (X)`
+                      : `${gameState.playerNames.O} (O)`
+                  }`}
             </h2>
           </div>
 
@@ -243,39 +344,45 @@ export default function Game({
             ))}
           </div>
 
-          {/* Player Indicator */}
           <div className="text-center text-gray-600 mb-4">
             <p>
-              You are Player: {user?.uid === gameState.players.X ? "X" : "O"}
+              You are:{" "}
+              <strong>
+                {user?.uid === gameState.players.X
+                  ? `${gameState.playerNames.X} (X)`
+                  : `${gameState.playerNames.O} (O)`}
+              </strong>
             </p>
           </div>
 
-          {/* Win Stats */}
           <div className="text-center text-lg font-semibold text-gray-700 mb-4">
-            <p>Player X Wins: {gameState.wins.X}</p>
-            <p>Player O Wins: {gameState.wins.O}</p>
+            <p>
+              {gameState.playerNames.X} (X) Wins: {gameState.wins.X}
+            </p>
+            <p>
+              {gameState.playerNames.O} (O) Wins: {gameState.wins.O}
+            </p>
           </div>
 
-          {/* SWAP STARTER AFTER WIN */}
           {gameState.winner && (
-            <div className="text-center mt-6 space-y-4">
+            <div className="mt-6 text-center space-y-4">
               <h3 className="text-xl font-semibold text-gray-900">
-                Choose who starts next round:
+                Who starts next round?
               </h3>
 
-              <div className="flex justify-center gap-4">
+              <div className="flex gap-4 justify-center">
                 <button
                   onClick={() => swapStarter("X")}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  Player X Starts
+                  {gameState.playerNames.X} (X)
                 </button>
 
                 <button
                   onClick={() => swapStarter("O")}
                   className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
                 >
-                  Player O Starts
+                  {gameState.playerNames.O} (O)
                 </button>
               </div>
             </div>
@@ -283,9 +390,7 @@ export default function Game({
         </div>
 
         {/* CHAT */}
-        <div className="">
-          <Chat gameId={gameId} />
-        </div>
+        <Chat gameId={gameId} />
       </div>
     </div>
   );

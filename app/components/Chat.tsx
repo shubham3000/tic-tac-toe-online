@@ -137,11 +137,11 @@ export default function Chat({ gameId }: { gameId: string }) {
   };
 
   return (
-    <div className="w-full max-w-md bg-white p-4 rounded-xl shadow-lg">
+    <div className="w-full bg-white p-4 rounded-xl shadow-lg">
       <h2 className="text-xl text-gray-600 font-semibold mb-3">💬 Chat</h2>
 
       {/* Chat Messages */}
-      <div className="overflow-y-auto border border-gray-300 rounded-md p-3 mb-3 bg-gray-50 h-64">
+      <div className="overflow-y-auto border border-gray-300 rounded-md p-3 mb-3 bg-gray-50 h-96">
         {messages.map((msg) => (
           <div
             key={msg.id}
