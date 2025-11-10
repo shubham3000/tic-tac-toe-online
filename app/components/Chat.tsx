@@ -13,42 +13,59 @@ import {
   Timestamp,
   DocumentData,
 } from "firebase/firestore";
+import Image from "next/image";
 
 type ChatMessage = {
   id: string;
-  text: string;
+  text?: string;
   sender: string;
   createdAt: Timestamp | null;
+  type: "text" | "sticker";
+  stickerUrl?: string | null;
 };
 
 export default function Chat({ gameId }: { gameId: string }) {
   const { user } = useAuth();
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [showStickers, setShowStickers] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ Validation function
+  // Random color per user session
+  const userColor = "#4f46e5"; // X → blue
+  const otherColor = "#6b7280"; // O → gray
+
+  // Stickers
+  const stickers = [
+    "/stickers/haha.png",
+    "/stickers/lol.png",
+    "/stickers/angryboy.png",
+    "/stickers/angrygirl.png",
+    "/stickers/angry2.png",
+    "/stickers/angry3.png",
+    "/stickers/break-up.png",
+    "/stickers/happy.png",
+    "/stickers/laugh.png",
+    "/stickers/no.png",
+    "/stickers/XOXO.png",
+    "/stickers/win.png",
+  ];
+
+  // Validate text
   const isValidMessage = (text: string): boolean => {
     if (!text) return false;
-
-    // Block URLs
     if (/(https?:\/\/[^\s]+)/gi.test(text)) return false;
-
-    // Block HTML tags
     if (/<[^>]*>/g.test(text)) return false;
-
-    // Block base64 image strings
     if (/^data:image\/[a-z]+;base64,/i.test(text)) return false;
-
-    // Block common file extensions
     if (/\.(jpg|jpeg|png|gif|pdf|docx|zip|mp4|mp3)$/i.test(text)) return false;
 
-    // Allow only letters, numbers, punctuation, spaces, emojis
     const allowedPattern = /^[\p{L}\p{N}\p{P}\p{Z}\p{Emoji}]+$/u;
     return allowedPattern.test(text);
   };
 
-  // Load messages in real-time
+  // Load chat messages
   useEffect(() => {
     const chatRef = collection(db, "games", gameId, "chat");
     const q = query(chatRef, orderBy("createdAt"));
@@ -59,8 +76,10 @@ export default function Chat({ gameId }: { gameId: string }) {
 
         return {
           id: doc.id,
-          text: typeof data.text === "string" ? data.text : "",
-          sender: typeof data.sender === "string" ? data.sender : "unknown",
+          type: data.type,
+          text: data.text,
+          stickerUrl: data.stickerUrl,
+          sender: data.sender,
           createdAt:
             data.createdAt instanceof Timestamp ? data.createdAt : null,
         };
@@ -68,29 +87,31 @@ export default function Chat({ gameId }: { gameId: string }) {
 
       setMessages(msgs);
 
-      setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+      setTimeout(
+        () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+        100
+      );
     });
 
     return () => unsubscribe();
   }, [gameId]);
 
+  // Send text message
   const sendMessage = async () => {
     if (!user) return;
 
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    // ✅ Validate before sending
     if (!isValidMessage(trimmed)) {
-      alert("Only text and emojis are allowed — no links, files, or images.");
+      alert("Only emojis and clean text allowed — no links, files, or HTML.");
       return;
     }
 
     const chatRef = collection(db, "games", gameId, "chat");
 
     await addDoc(chatRef, {
+      type: "text",
       text: trimmed,
       sender: user.uid,
       createdAt: serverTimestamp(),
@@ -99,12 +120,28 @@ export default function Chat({ gameId }: { gameId: string }) {
     setInput("");
   };
 
+  // Send sticker
+  const sendSticker = async (url: string) => {
+    if (!user) return;
+
+    const chatRef = collection(db, "games", gameId, "chat");
+
+    await addDoc(chatRef, {
+      type: "sticker",
+      stickerUrl: url,
+      sender: user.uid,
+      createdAt: serverTimestamp(),
+    });
+
+    setShowStickers(false);
+  };
+
   return (
     <div className="w-full max-w-md bg-white p-4 rounded-xl shadow-lg">
       <h2 className="text-xl text-gray-600 font-semibold mb-3">💬 Chat</h2>
 
-      {/* Messages */}
-      <div className="overflow-y-auto border border-gray-300 rounded-md p-3 mb-3 bg-gray-50">
+      {/* Chat Messages */}
+      <div className="overflow-y-auto border border-gray-300 rounded-md p-3 mb-3 bg-gray-50 h-64">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -112,21 +149,52 @@ export default function Chat({ gameId }: { gameId: string }) {
               msg.sender === user?.uid ? "justify-end" : "justify-start"
             }`}
           >
-            <div
-              className={`px-3 py-2 rounded-lg max-w-[70%] ${
-                msg.sender === user?.uid
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-300 text-black"
-              }`}
-            >
-              {msg.text}
-            </div>
+            {/* Text Message */}
+            {msg.type === "text" && (
+              <div
+                className={`px-3 py-2 rounded-lg max-w-[70%] text-white`}
+                style={{
+                  backgroundColor:
+                    msg.sender === user?.uid ? userColor : otherColor,
+                }}
+              >
+                {msg.text}
+              </div>
+            )}
+
+            {/* Sticker Message */}
+            {msg.type === "sticker" && msg.stickerUrl && (
+              <Image
+                src={msg.stickerUrl}
+                alt="sticker"
+                width={64}
+                height={64}
+                className="w-16 h-16 rounded-lg"
+              />
+            )}
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Sticker Picker */}
+      {showStickers && (
+        <div className="grid grid-cols-3 gap-3 p-3 h-40 overflow-y-scroll bg-gray-200 rounded-lg mb-3">
+          {stickers.map((s, index) => (
+            <Image
+              key={index}
+              src={s}
+              onClick={() => sendSticker(s)}
+              alt="sticker"
+              width={64}
+              height={64}
+              className="w-16 h-16 cursor-pointer hover:scale-110 transition"
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Input + Buttons */}
       <div className="flex gap-2">
         <input
           value={input}
@@ -134,12 +202,19 @@ export default function Chat({ gameId }: { gameId: string }) {
           placeholder="Type message..."
           className="flex-1 px-3 py-2 border rounded-md text-black"
         />
+
         <button
-          type="submit"
           onClick={sendMessage}
           className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
         >
           Send
+        </button>
+
+        <button
+          onClick={() => setShowStickers(!showStickers)}
+          className="px-3 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+        >
+          😄
         </button>
       </div>
     </div>
