@@ -16,6 +16,7 @@ type GameState = {
   playerNames: { X: string | null; O: string | null };
   wins: { X: number; O: number };
   startingPlayer: "X" | "O";
+  gameType?: string;
 };
 
 export default function Game({
@@ -26,7 +27,6 @@ export default function Game({
   onBack: () => void;
 }) {
   const { user, logout } = useAuth();
-  const [copied, setCopied] = useState(false);
 
   const [gameState, setGameState] = useState<GameState>({
     board: Array(9).fill(null),
@@ -42,7 +42,7 @@ export default function Game({
   // Load game + realtime updates
   // --------------------------------------------------------------
   useEffect(() => {
-    const gameRef = doc(db, "games", gameId);
+    const gameRef = doc(db, "gameLobbies", gameId);
 
     const initGame = async () => {
       const gameDoc = await getDoc(gameRef);
@@ -58,7 +58,12 @@ export default function Game({
           winner: null,
           players: { X: user?.uid || null, O: null },
           playerNames: { X: user?.displayName || "Player X", O: null },
-          wins: { X: 0, O: 0 },
+          winsData: { 
+            tictactoe: { 
+              [user?.uid || "temp"]: 0
+            } 
+          },
+          gameType: "tictactoe",
         });
         return;
       }
@@ -77,12 +82,11 @@ export default function Game({
       const updates: Record<string, unknown> = {};
 
       // Assign user to empty slot
-      if (!currentX && user?.uid !== currentO) {
+      // Assign user to exactly ONE empty slot
+      if (!currentX && !currentO) {
         updates["players.X"] = user?.uid;
         updates["playerNames.X"] = user?.displayName || "Player X";
-      }
-
-      if (!currentO && user?.uid !== currentX) {
+      } else if (!currentO && user?.uid !== currentX) {
         updates["players.O"] = user?.uid;
         updates["playerNames.O"] = user?.displayName || "Player O";
       }
@@ -110,17 +114,28 @@ export default function Game({
 
     // Live realtime updates
     const unsubscribe = onSnapshot(gameRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as GameState;
+      if (!docSnap.exists()) return;
 
-        setGameState({
-          ...data,
-          wins: data.wins || { X: 0, O: 0 },
-          playerNames: data.playerNames || { X: null, O: null },
-          startingPlayer: data.startingPlayer || "X",
-          currentPlayer: data.currentPlayer || data.startingPlayer,
-        });
-      }
+      const rawData = docSnap.data();
+      const gameType = rawData?.gameType || "tictactoe";
+
+      // Convert user ID based wins to X/O display wins
+      const winsDataByUserId = rawData?.winsData?.[gameType] || {};
+      const wins = {
+        X: typeof winsDataByUserId[rawData?.players?.X] === "number" ? winsDataByUserId[rawData?.players?.X] : 0,
+        O: typeof winsDataByUserId[rawData?.players?.O] === "number" ? winsDataByUserId[rawData?.players?.O] : 0,
+      };
+
+      setGameState({
+        board: rawData.board ?? Array(9).fill(null),
+        currentPlayer: rawData.currentPlayer ?? rawData.startingPlayer ?? "X",
+        winner: rawData.winner ?? null,
+        players: rawData.players ?? { X: null, O: null },
+        playerNames: rawData.playerNames ?? { X: "Player X", O: "Player O" },
+        wins,
+        startingPlayer: rawData.startingPlayer ?? "X",
+        gameType,
+      });
     });
 
     return () => unsubscribe();
@@ -151,21 +166,19 @@ export default function Game({
   };
 
   // --------------------------------------------------------------
-  // Copy Game ID
-  // --------------------------------------------------------------
-  const copyGameId = async () => {
-    await navigator.clipboard.writeText(gameId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  // --------------------------------------------------------------
   // Handle Player Move
   // --------------------------------------------------------------
   const handleMove = async (index: number) => {
     if (!user) return;
 
-    const playerSymbol = gameState.players.X === user.uid ? "X" : "O";
+    const playerSymbol =
+      gameState.players.X === user.uid
+        ? "X"
+        : gameState.players.O === user.uid
+          ? "O"
+          : null;
+
+    if (!playerSymbol) return;
 
     if (
       gameState.board[index] !== null ||
@@ -179,16 +192,21 @@ export default function Game({
     newBoard[index] = playerSymbol;
 
     const winner = checkWinner(newBoard);
-    const gameRef = doc(db, "games", gameId);
+    const gameRef = doc(db, "gameLobbies", gameId);
 
     if (winner && winner !== "draw") {
+      const winnerUserId = gameState.players[winner];
+      const currentWins =
+        typeof gameState.wins?.[winner] === "number"
+          ? gameState.wins[winner]
+          : 0;
+
       await updateDoc(gameRef, {
         board: newBoard,
         winner,
         currentPlayer: null,
-        [`wins.${winner}`]: (gameState.wins[winner] || 0) + 1,
+        [`winsData.tictactoe.${winnerUserId}`]: currentWins + 1,
       });
-      return;
     }
 
     await updateDoc(gameRef, {
@@ -199,21 +217,11 @@ export default function Game({
   };
 
   // --------------------------------------------------------------
-  // Reset Round (same starter)
-  // --------------------------------------------------------------
-  const resetGame = async () => {
-    await updateDoc(doc(db, "games", gameId), {
-      board: Array(9).fill(null),
-      currentPlayer: gameState.startingPlayer,
-      winner: null,
-    });
-  };
-
-  // --------------------------------------------------------------
-  // Swap Starter + Swap Teams + Swap Wins + Swap Names
+  // Swap Starter + Swap Teams
+  // (Wins stay with users, not swapped)
   // --------------------------------------------------------------
   const swapStarter = async (newStarter: "X" | "O") => {
-    const gameRef = doc(db, "games", gameId);
+    const gameRef = doc(db, "gameLobbies", gameId);
 
     const currentX = gameState.players.X;
     const currentO = gameState.players.O;
@@ -221,14 +229,10 @@ export default function Game({
     const nameX = gameState.playerNames.X;
     const nameO = gameState.playerNames.O;
 
-    const winsX = gameState.wins.X;
-    const winsO = gameState.wins.O;
-
     let newPlayers = { ...gameState.players };
     let newNames = { ...gameState.playerNames };
-    let newWins = { ...gameState.wins };
 
-    // If user is switching sides → swap everything
+    // If user is switching sides → swap players and names only
     const userIsX = user?.uid === currentX;
     const userIsO = user?.uid === currentO;
 
@@ -238,7 +242,7 @@ export default function Game({
     if (switchingXtoO || switchingOtoX) {
       newPlayers = { X: currentO, O: currentX };
       newNames = { X: nameO, O: nameX };
-      newWins = { X: winsO, O: winsX };
+      // Wins are NOT swapped - they stay with each user
     }
 
     await updateDoc(gameRef, {
@@ -246,7 +250,6 @@ export default function Game({
       currentPlayer: newStarter,
       players: newPlayers,
       playerNames: newNames,
-      wins: newWins,
       board: Array(9).fill(null),
       winner: null,
     });
@@ -261,32 +264,14 @@ export default function Game({
      ${value === "X" ? "text-blue-500" : "text-pink-500"}`;
 
   // --------------------------------------------------------------
-  // Waiting screen
+  // Waiting screen - Only show if X hasn't joined yet
   // --------------------------------------------------------------
-  if (!gameState.players.O) {
+  if (!gameState.players.X) {
     return (
-      <div className="text-center p-8">
-        <h2 className="text-2xl font-bold mb-4">Waiting for Player 2...</h2>
-
-        <p className="text-gray-600 mb-2">
-          Share this Game ID:
-          <span className="font-semibold ml-1">{gameId}</span>
-        </p>
-
-        <p className="text-gray-700 mt-3 font-semibold">
-          First Turn: {gameState.startingPlayer}
-        </p>
-
-        <button
-          onClick={copyGameId}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
-        >
-          Copy Game ID
-        </button>
-
-        {copied && (
-          <p className="text-green-500 font-semibold mt-2">✅ Copied!</p>
-        )}
+      <div className="min-h-screen flex items-center justify-center">
+        <h2 className="text-2xl font-bold text-white">
+          ⏳ Waiting for Player X...
+        </h2>
       </div>
     );
   }
@@ -331,18 +316,24 @@ export default function Game({
           </div>
 
           {/* Game Board */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {gameState.board.map((value, index) => (
-              <button
-                key={index}
-                onClick={() => handleMove(index)}
-                className={getCellStyle(value)}
-                disabled={!!gameState.winner}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
+          {gameState.board.length === 9 ? (
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              {gameState.board.map((value, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleMove(index)}
+                  className={getCellStyle(value)}
+                  disabled={!!gameState.winner}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-600 bg-gray-50 rounded-lg mb-8">
+              <p className="text-lg font-semibold">⏳ Loading Game Board...</p>
+            </div>
+          )}
 
           <div className="text-center text-gray-600 mb-4">
             <p>
