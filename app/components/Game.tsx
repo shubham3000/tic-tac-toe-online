@@ -285,14 +285,14 @@ export default function Game({
       <div className="flex gap-4 mb-6">
         <button
           onClick={onBack}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer"
         >
           ⬅ Back
         </button>
 
         <button
           onClick={logout}
-          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer"
         >
           Logout
         </button>

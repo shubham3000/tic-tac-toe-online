@@ -378,7 +378,7 @@ export default function Bingo({
           <h1 className="text-3xl font-bold text-gray-800">🎲 Bingo Game (1-25)</h1>
           <button
             onClick={onBack}
-            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
           >
             Back to Lobby
           </button>

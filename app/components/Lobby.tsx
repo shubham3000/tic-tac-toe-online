@@ -114,7 +114,7 @@ export default function Lobby() {
 
           <button
             onClick={logout}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors cursor-pointer"
           >
             Logout
           </button>
@@ -128,7 +128,7 @@ export default function Lobby() {
               <h2 className="text-xl font-bold text-gray-800 mb-4">🎮 Create New Game</h2>
               <button
                 onClick={createNewGameId}
-                className="w-full py-4 bg-linear-to-r from-green-500 to-green-600 text-white rounded-lg font-bold hover:shadow-xl transition-all text-lg"
+                className="w-full py-4 bg-linear-to-r from-green-500 to-green-600 text-white rounded-lg font-bold hover:shadow-xl transition-all text-lg cursor-pointer"
               >
                 Generate Game ID
               </button>
@@ -155,7 +155,7 @@ export default function Lobby() {
                 />
                 <button
                   onClick={joinExistingGame}
-                  className="w-full py-3 bg-linear-to-r from-blue-500 to-blue-600 text-white rounded-lg font-bold hover:shadow-xl transition-all"
+                  className="w-full py-3 bg-linear-to-r from-blue-500 to-blue-600 text-white rounded-lg font-bold hover:shadow-xl transition-all cursor-pointer"
                 >
                   Join Game
                 </button>
@@ -177,7 +177,7 @@ export default function Lobby() {
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
-                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap"
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap cursor-pointer"
                 >
                   {copied ? "✓ Copied!" : "Copy ID"}
                 </button>
