@@ -1,13 +1,15 @@
-# 🎮 Tic-Tac-Toe Multiplayer (Next.js + Firebase + Firestore)
+# 🎮 Multiplayer Games Platform (Next.js + Firebase + Firestore)
 
-A real-time, online multiplayer **Tic-Tac-Toe** game featuring:
+A real-time, online multiplayer gaming platform featuring **Tic-Tac-Toe** and **Bingo** games with:
 
 ✅ Next.js 16 (App Router)  
 ✅ Firebase Authentication  
 ✅ Firestore Realtime Sync  
+✅ Multiple Game Types (Tic-Tac-Toe & Bingo)  
 ✅ Player Chat  
 ✅ Starting Player Selection  
 ✅ Swap Starter After Round  
+✅ Independent Win Tracking Per Game  
 ✅ Clean UI with TailwindCSS  
 
 Two players join the same game using a **Game ID**. Every move and chat message updates instantly using Firestore listeners.
@@ -16,30 +18,50 @@ Two players join the same game using a **Game ID**. Every move and chat message 
 
 ## 🚀 Features
 
+### 🎯 Multiple Game Types
+- **Tic-Tac-Toe**: Classic 3x3 board game
+- **Bingo**: 5x5 card with numbers 1-25 (rows, columns, diagonals)
+
 ### 🔥 Real-Time Multiplayer
 - Firestore `onSnapshot` keeps both players perfectly in sync.
+- Instant board updates across all clients
 
 ### 👥 Player Assignment
-- Player **X** = Game creator  
-- Player **O** = Joiner  
+- First player to join becomes **X** (or first player in Bingo)
+- Second player becomes **O**  
 - Auto-assigns upon joining a game
 
 ### 🎙️ In-Game Chat
 - Real-time text messaging  
-- Emoji & text only  
-- No files, images, or links allowed  
+- Emoji & text support  
 - Auto-scroll to latest messages  
 
 ### 🧠 Game Logic
-- Full winner detection  
+
+**Tic-Tac-Toe:**
+- Full winner detection (rows, columns, diagonals)
 - Draw detection  
 - Turn switching  
 - Prevents invalid or out-of-turn moves  
+
+**Bingo:**
+- 5x5 random number cards (1-25)
+- Click to mark numbers
+- Win detection (complete rows, columns, diagonals)
+- Opponent cards hidden until game ends
+- Winning box highlighted with pulsing animation
+
+### 🏆 Independent Win Tracking
+- **Each game session** has its own isolated win counter
+- **Wins are tied to players** (by user ID), not positions
+- When players swap positions, their wins stay with them
+- Bingo and Tic-Tac-Toe wins are tracked separately
 
 ### 🔄 Reset & Swap Starter
 - After each round:
   - Choose **who starts next round (X or O)**  
   - Board resets with selected starter  
+- Wins remain with each player regardless of position swap
 - You can also pick who starts **before** creating a game in the lobby
 
 ### 🔐 Authentication (Firebase)
@@ -50,7 +72,9 @@ Two players join the same game using a **Game ID**. Every move and chat message 
 - Responsive layout  
 - Smooth navigation  
 - Copy Game ID button  
-- "Back to Lobby" without losing session  
+- "Back to Lobby" without losing session
+- Loading states for game initialization
+- Visual feedback for game actions
 
 ---
 
@@ -61,10 +85,12 @@ TIC_TAC_TOE/
 │
 ├── app/
 │ ├── components/
-│ │ ├── Game.tsx # Main game board logic
-│ │ ├── Lobby.tsx # Join/Create game UI
-│ │ ├── Chat.tsx # Real-time chat component
-│ │ └── LoginScreen.tsx # Login page
+│ │ ├── Game.tsx       # Tic-Tac-Toe game board logic
+│ │ ├── Bingo.tsx      # Bingo game board logic
+│ │ ├── Lobby.tsx      # Join/Create game UI
+│ │ ├── Chat.tsx       # Real-time chat component
+│ │ ├── LoginScreen.tsx # Login page
+│ │ └── [others].tsx
 │ │
 │ ├── globals.css
 │ ├── layout.tsx
@@ -75,7 +101,7 @@ TIC_TAC_TOE/
 │ └── auth.tsx # Auth context + hooks
 │
 ├── public/
-│ └── favicon.ico
+│ └── stickers/ # Game assets
 │
 ├── .env.local
 ├── tailwind.config.ts
@@ -128,46 +154,45 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
 ---
 ## 🎮 How to Play
 
-1️⃣ Login
-
+### 1️⃣ Login
 Firebase Authentication is required.
 
-2️⃣ Enter the Lobby
+### 2️⃣ Enter the Lobby
+Choose one of the available games:
+- **Tic-Tac-Toe** - Classic 3x3 grid
+- **Bingo** - 5x5 number card
 
-Choose:
+Then:
+- **Create Game** - Start a new game session
+- **Join Game** - Enter an existing Game ID
 
-Create Game
+### 3️⃣ Choose Who Starts (Tic-Tac-Toe only)
+Before creating a game, select:
+- **Player X** (starts first)
+- **Player O**
 
-Join Game using an ID
+### 4️⃣ Share Game ID
+Your friend joins using the same ID and game type.
 
-3️⃣ Choose Who Starts
+### 5️⃣ Play in Real Time
 
-Before creating a game you can pick:
+**Tic-Tac-Toe:**
+- Click empty cells to place your mark
+- Complete 3 in a row, column, or diagonal to win
 
-Player X
+**Bingo:**
+- Click numbers on your card to mark them
+- Complete a row, column, or diagonal to win
+- Opponent's card is hidden until game ends
 
-Player O
+### 6️⃣ Chat System
+Send text messages while playing - all updates sync in real-time.
 
-4️⃣ Share Game ID
-
-Your friend joins using the same ID.
-
-5️⃣ Play in Real Time
-
-Both boards sync instantly.
-
-6️⃣ Chat System
-
-Send text messages while playing.
-
-7️⃣ End of Round
-
+### 7️⃣ End of Round
 After a win or draw:
+- Choose who starts next round (X or O)
+- Board resets instantly
+- Your win count updates (tied to your user, not position)
 
-Choose who starts next round (X or O)
-
-Board resets instantly
-
-8️⃣ Return to Lobby
-
-Use the Back button anytime.
+### 8️⃣ Return to Lobby
+Use the **Back to Lobby** button anytime to find a new game.
